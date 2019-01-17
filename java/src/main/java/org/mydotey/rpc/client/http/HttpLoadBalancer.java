@@ -7,8 +7,22 @@ package org.mydotey.rpc.client.http;
  */
 public interface HttpLoadBalancer {
 
-    String getServiceUrl();
+    HttpExecutionContext newExecutionContext();
 
-    void forceUpdate();
+    interface HttpExecutionContext {
+
+        String getServiceUrl();
+
+        long getStartTime();
+
+        long getEndTime();
+
+        Throwable getExecutionError();
+
+        void setExecutionError(Throwable executionError);
+
+        void complete();
+
+    }
 
 }

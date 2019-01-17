@@ -1,9 +1,7 @@
 package org.mydotey.rpc.client.http;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
@@ -11,7 +9,6 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.mydotey.codec.Codec;
 import org.mydotey.java.ObjectExtension;
-import org.mydotey.java.StringExtension;
 
 /**
  * @author koqizhao
@@ -20,7 +17,6 @@ import org.mydotey.java.StringExtension;
  */
 public class HttpServiceClientConfig implements Cloneable {
 
-    private List<String> _serviceUrls;
     private Map<String, String> _procedureRestPathMap;
 
     private Supplier<CloseableHttpClient> _syncClientProvider;
@@ -32,10 +28,6 @@ public class HttpServiceClientConfig implements Cloneable {
 
     protected HttpServiceClientConfig() {
 
-    }
-
-    public List<String> getServiceUrls() {
-        return _serviceUrls;
     }
 
     public Map<String, String> getProcedureRestPathMap() {
@@ -62,8 +54,6 @@ public class HttpServiceClientConfig implements Cloneable {
     protected HttpServiceClientConfig clone() {
         try {
             HttpServiceClientConfig config = (HttpServiceClientConfig) super.clone();
-            if (config._serviceUrls != null)
-                config._serviceUrls = Collections.unmodifiableList(new ArrayList<>(config._serviceUrls));
             if (_procedureRestPathMap != null)
                 config._procedureRestPathMap = Collections.unmodifiableMap(new HashMap<>(config._procedureRestPathMap));
             return config;
@@ -78,11 +68,6 @@ public class HttpServiceClientConfig implements Cloneable {
 
         public Builder() {
             _config = new HttpServiceClientConfig();
-        }
-
-        public Builder setServiceUrls(List<String> serviceUrls) {
-            _config._serviceUrls = serviceUrls;
-            return this;
         }
 
         public Builder setProcedureRestPathMap(Map<String, String> procedureRestPathMap) {
@@ -111,17 +96,11 @@ public class HttpServiceClientConfig implements Cloneable {
         }
 
         public HttpServiceClientConfig build() {
-            ObjectExtension.requireNonEmpty(_config._serviceUrls, "serviceUrls");
             ObjectExtension.requireNonEmpty(_config._procedureRestPathMap, "procedureRestPathMap");
             ObjectExtension.requireNonNull(_config._syncClientProvider, "syncClientProvider");
             ObjectExtension.requireNonNull(_config._asyncClientProvider, "asyncClientProvider");
             ObjectExtension.requireNonNull(_config._codec, "codec");
             ObjectExtension.requireNonNull(_config._loadBalancer, "loadBalancer");
-
-            for (int i = 0; i < _config._serviceUrls.size(); i++) {
-                String serviceUrl = _config._serviceUrls.get(i);
-                _config._serviceUrls.set(i, StringExtension.trimEnd(serviceUrl, '/'));
-            }
 
             return _config.clone();
         }

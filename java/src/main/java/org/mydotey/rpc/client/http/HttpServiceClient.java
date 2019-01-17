@@ -3,32 +3,30 @@ package org.mydotey.rpc.client.http;
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
-import org.mydotey.codec.Codec;
 import org.mydotey.java.ObjectExtension;
 import org.mydotey.java.StringExtension;
-import org.mydotey.rpc.ack.Acks;
-import org.mydotey.rpc.client.http.HttpRuntimeException;
-import org.mydotey.rpc.client.http.apache.ApacheHttpRpcClient;
+import org.mydotey.rpc.client.RpcClient;
+import org.mydotey.rpc.client.http.HttpLoadBalancer.HttpExecutionContext;
 import org.mydotey.rpc.client.http.apache.HttpRequestFactory;
-import org.mydotey.rpc.error.BadRequestException;
-import org.mydotey.rpc.error.ErrorCodes;
-import org.mydotey.rpc.error.ServiceException;
-import org.mydotey.rpc.error.ServiceUnavailableException;
+import org.mydotey.rpc.client.http.apache.async.HttpRequestAsyncExecutors;
+import org.mydotey.rpc.client.http.apache.sync.HttpRequestExecutors;
 import org.mydotey.rpc.response.Response;
-import org.mydotey.rpc.response.ResponseError;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author koqizhao
  *
  * Nov 29, 2018
  */
-public class HttpServiceClient extends ApacheHttpRpcClient {
+public class HttpServiceClient implements RpcClient {
+
+    private static Logger _logger = LoggerFactory.getLogger(HttpServiceClient.class);
 
     private HttpServiceClientConfig _config;
 
@@ -41,98 +39,86 @@ public class HttpServiceClient extends ApacheHttpRpcClient {
         return _config;
     }
 
-    @Override
-    public void close() throws IOException {
-
-    }
-
-    @Override
-    protected CloseableHttpClient getHttpClient() {
-        return _config.getSyncClientProvider().get();
-    }
-
-    @Override
-    protected CloseableHttpAsyncClient getHttpAsyncClient() {
-        return _config.getAsyncClientProvider().get();
-    }
-
-    @Override
-    protected <Req> HttpUriRequest toHttpUriRequest(String procedure, Req request) {
+    protected <Req> HttpUriRequest toHttpUriRequest(String serviceUrl, String procedure, Req request) {
         String restPath = _config.getProcedureRestPathMap().get(procedure);
         if (restPath == null)
             throw new IllegalArgumentException("unknown procedure: " + procedure);
 
-        String requestUrl = _config.getLoadBalancer().getServiceUrl() + restPath;
+        String requestUrl;
+        if (serviceUrl.endsWith("/") && !restPath.startsWith("/")
+                || !serviceUrl.endsWith("/") && restPath.startsWith("/"))
+            requestUrl = serviceUrl + restPath;
+        else if (serviceUrl.endsWith("/"))
+            requestUrl = serviceUrl + StringExtension.trimStart(restPath, '/');
+        else
+            requestUrl = serviceUrl + "/" + restPath;
 
         if (request == null)
             return HttpRequestFactory.createRequest(requestUrl, HttpGet.METHOD_NAME);
-        return HttpRequestFactory.createRequest(requestUrl, HttpPost.METHOD_NAME, request, getCodec());
+        return HttpRequestFactory.createRequest(requestUrl, HttpPost.METHOD_NAME, request, _config.getCodec());
     }
 
     @Override
     public <Req, Res> Res invoke(String procedure, Req request, Class<Res> clazz) {
+        HttpExecutionContext executionContext = _config.getLoadBalancer().newExecutionContext();
+        Res response = null;
         try {
-            Res res = super.invoke(procedure, request, clazz);
-            checkResponse((Response) res);
-            return res;
-        } catch (HttpRuntimeException | ServiceUnavailableException e) {
-            _config.getLoadBalancer().forceUpdate();
-            throw e;
+            HttpUriRequest httpUriRequest = toHttpUriRequest(executionContext.getServiceUrl(), procedure, request);
+            response = HttpRequestExecutors.execute(_config.getSyncClientProvider().get(), httpUriRequest,
+                    _config.getCodec(), clazz);
+            Response.checkResponse((Response) response);
+            return response;
+        } catch (Throwable ex) {
+            executionContext.setExecutionError(ex);
+            logError(procedure, request, response, executionContext);
+            throw ex;
+        } finally {
+            executionContext.complete();
         }
     }
 
     @Override
     public <Req, Res> CompletableFuture<Res> invokeAsync(String procedure, Req request, Class<Res> clazz) {
-        return super.invokeAsync(procedure, request, clazz).thenApply(r -> {
-            checkResponse((Response) r);
-            return r;
-        }).whenComplete((r, e) -> {
-            if (e == null)
-                return;
+        HttpExecutionContext executionContext = _config.getLoadBalancer().newExecutionContext();
+        AtomicReference<Res> responseRef = new AtomicReference<>();
+        try {
+            HttpUriRequest httpUriRequest = toHttpUriRequest(executionContext.getServiceUrl(), procedure, request);
+            return HttpRequestAsyncExecutors
+                    .executeAsync(_config.getAsyncClientProvider().get(), httpUriRequest, _config.getCodec(), clazz)
+                    .thenApply(r -> {
+                        responseRef.set(r);
+                        Response.checkResponse((Response) r);
+                        return r;
+                    }).whenComplete((r, e) -> {
+                        try {
+                            if (e == null)
+                                return;
 
-            if (e instanceof ExecutionException)
-                e = e.getCause();
-            if (e instanceof HttpRuntimeException || e instanceof ServiceUnavailableException)
-                _config.getLoadBalancer().forceUpdate();
-        });
+                            if (e instanceof ExecutionException)
+                                e = e.getCause();
+                            executionContext.setExecutionError(e);
+                            logError(procedure, request, responseRef.get(), executionContext);
+                        } finally {
+                            executionContext.complete();
+                        }
+                    });
+        } catch (Throwable e) {
+            executionContext.setExecutionError(e);
+            executionContext.complete();
+            logError(procedure, request, responseRef.get(), executionContext);
+            throw e;
+        }
+    }
+
+    protected <Req, Res> void logError(String procedure, Req request, Res response,
+            HttpExecutionContext executionContext) {
+        _logger.info("rpc failed, procedure: {}, codec: {}, context: {}", procedure, _config.getCodec(),
+                executionContext);
     }
 
     @Override
-    protected Codec getCodec() {
-        return _config.getCodec();
-    }
+    public void close() throws IOException {
 
-    protected void checkResponse(Response res) {
-        String message = "unknown error";
-        if (res == null)
-            throw new ServiceException(message);
-
-        if (res.getStatus() == null)
-            throw new ServiceException("no status, response: " + res);
-
-        if (Acks.isFail(res.getStatus().getAck())) {
-            ResponseError error = res.getStatus().getError();
-            if (error == null)
-                throw new ServiceException("no error, response: " + res);
-
-            if (!StringExtension.isBlank(error.getMessage()))
-                message = error.getMessage();
-
-            String errorCode = error.getCode();
-            if (errorCode == null)
-                throw new ServiceException("no error code, response: " + res);
-
-            switch (errorCode) {
-                case ErrorCodes.BAD_REQUEST:
-                    throw new BadRequestException(error.getMessage());
-                case ErrorCodes.SERVICE_EXCEPTION:
-                    throw new ServiceException(error.getMessage());
-                case ErrorCodes.SERVICE_UNAVAILABLE:
-                    throw new ServiceUnavailableException(error.getMessage());
-                default:
-                    throw new ServiceException("errorCode: " + error.getCode() + ", message: " + message);
-            }
-        }
     }
 
 }
