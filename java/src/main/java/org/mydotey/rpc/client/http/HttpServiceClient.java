@@ -66,7 +66,7 @@ public class HttpServiceClient implements RpcClient {
             HttpUriRequest httpUriRequest = toHttpUriRequest(executionContext.getServiceUrl(), procedure, request);
             response = HttpRequestExecutors.execute(_config.getSyncClientProvider().get(), httpUriRequest,
                     _config.getCodec(), clazz);
-            Response.checkResponse((Response) response);
+            Response.check((Response) response);
             return response;
         } catch (Throwable ex) {
             executionContext.setExecutionError(ex);
@@ -87,7 +87,7 @@ public class HttpServiceClient implements RpcClient {
                     .executeAsync(_config.getAsyncClientProvider().get(), httpUriRequest, _config.getCodec(), clazz)
                     .thenApply(r -> {
                         responseRef.set(r);
-                        Response.checkResponse((Response) r);
+                        Response.check((Response) r);
                         return r;
                     }).whenComplete((r, e) -> {
                         try {

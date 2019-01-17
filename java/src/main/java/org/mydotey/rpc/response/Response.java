@@ -16,33 +16,36 @@ public interface Response {
 
     ResponseStatus getStatus();
 
-    static void checkResponse(Response response) {
-        String message = "unknown error";
+    static void check(Response response) {
         if (response == null)
-            throw new ServiceException(message);
+            throw new ServiceException("response is null");
 
         if (response.getStatus() == null)
-            throw new ServiceException("no status, response: " + response);
+            throw new ServiceException("response no status");
+
+        if (StringExtension.isBlank(response.getStatus().getAck()))
+            throw new ServiceException("response status no ack: " + response.getStatus());
 
         if (Acks.isFail(response.getStatus().getAck())) {
             ResponseError error = response.getStatus().getError();
+            String message = "unknown error";
             if (error == null)
-                throw new ServiceException("no error, response: " + response);
+                throw new ServiceException(message + ", status: " + response.getStatus());
 
             if (!StringExtension.isBlank(error.getMessage()))
                 message = error.getMessage();
 
             String errorCode = error.getCode();
             if (errorCode == null)
-                throw new ServiceException("no error code, response: " + response);
+                throw new ServiceException(message + ", status: " + response.getStatus());
 
             switch (errorCode) {
                 case ErrorCodes.BAD_REQUEST:
-                    throw new BadRequestException(error.getMessage());
+                    throw new BadRequestException(message);
                 case ErrorCodes.SERVICE_EXCEPTION:
-                    throw new ServiceException(error.getMessage());
+                    throw new ServiceException(message);
                 case ErrorCodes.SERVICE_UNAVAILABLE:
-                    throw new ServiceUnavailableException(error.getMessage());
+                    throw new ServiceUnavailableException(message);
                 default:
                     throw new ServiceException("errorCode: " + error.getCode() + ", message: " + message);
             }
