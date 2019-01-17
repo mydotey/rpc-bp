@@ -3,6 +3,7 @@ package org.mydotey.rpc.client.http;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 
 import org.mydotey.java.ObjectExtension;
 import org.mydotey.rpc.error.ServiceUnavailableException;
@@ -19,27 +20,31 @@ public class RandomLoadBalancer implements HttpLoadBalancer {
     private static Logger _logger = LoggerFactory.getLogger(HttpServiceClient.class);
 
     private long _ttl;
-    private long _forceUpdateInterval;
+    private long _updateInterval;
 
     private List<String> _serviceUrls;
     private volatile int _current;
     private volatile long _lastUpdateTime;
     private volatile long _lastForceUpdateTime;
 
-    public RandomLoadBalancer(List<String> serviceUrls, long ttl, long forceUpdateInterval) {
+    private Random _random;
+
+    public RandomLoadBalancer(List<String> serviceUrls, long ttl, long updateInterval) {
         ObjectExtension.requireNonEmpty(serviceUrls, "serviceUrls");
-        if (ttl <= 0)
-            throw new IllegalArgumentException("ttl <= 0: " + ttl);
-        if (forceUpdateInterval < 0)
-            throw new IllegalArgumentException("forceUpdateInterval <= 0: " + forceUpdateInterval);
+        if (ttl < 0)
+            throw new IllegalArgumentException("ttl < 0: " + ttl);
+        if (updateInterval < 0)
+            throw new IllegalArgumentException("updateInterval < 0: " + updateInterval);
 
         _ttl = ttl;
-        _forceUpdateInterval = forceUpdateInterval;
+        _updateInterval = updateInterval;
 
         _serviceUrls = new ArrayList<>(serviceUrls);
         Collections.shuffle(_serviceUrls);
         _lastUpdateTime = System.currentTimeMillis();
         _logger.info("init with serviceUrls: {}", _serviceUrls);
+
+        _random = new Random();
     }
 
     @Override
@@ -74,14 +79,14 @@ public class RandomLoadBalancer implements HttpLoadBalancer {
     }
 
     protected void forceUpdate() {
-        if (_serviceUrls.size() == 1)
+        if (_serviceUrls.size() <= 1)
             return;
 
-        if (System.currentTimeMillis() - _lastForceUpdateTime < _forceUpdateInterval)
+        if (System.currentTimeMillis() - _lastForceUpdateTime <= _updateInterval)
             return;
 
         synchronized (this) {
-            if (System.currentTimeMillis() - _lastForceUpdateTime < _forceUpdateInterval)
+            if (System.currentTimeMillis() - _lastForceUpdateTime <= _updateInterval)
                 return;
 
             update();
@@ -91,7 +96,9 @@ public class RandomLoadBalancer implements HttpLoadBalancer {
 
     private void update() {
         int old = _current;
-        _current = (_current + 1) % _serviceUrls.size();
+        do {
+            _current = _random.nextInt(_serviceUrls.size());
+        } while (_current == old);
         _lastUpdateTime = System.currentTimeMillis();
         _logger.info("serviceUrl changed from {} to {}", _serviceUrls.get(old), _serviceUrls.get(_current));
     }
