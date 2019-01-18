@@ -31,8 +31,8 @@ public class RandomLoadBalancer implements HttpLoadBalancer {
 
     public RandomLoadBalancer(List<String> serviceUrls, long ttl, long updateInterval) {
         ObjectExtension.requireNonEmpty(serviceUrls, "serviceUrls");
-        if (ttl < 0)
-            throw new IllegalArgumentException("ttl < 0: " + ttl);
+        if (ttl <= 0)
+            throw new IllegalArgumentException("ttl <= 0: " + ttl);
         if (updateInterval < 0)
             throw new IllegalArgumentException("updateInterval < 0: " + updateInterval);
 
@@ -66,9 +66,9 @@ public class RandomLoadBalancer implements HttpLoadBalancer {
 
     protected String getServiceUrl() {
         if (_serviceUrls.size() > 1) {
-            if (System.currentTimeMillis() - _lastUpdateTime > _ttl) {
+            if (System.currentTimeMillis() - _lastUpdateTime >= _ttl) {
                 synchronized (this) {
-                    if (System.currentTimeMillis() - _lastUpdateTime > _ttl) {
+                    if (System.currentTimeMillis() - _lastUpdateTime >= _ttl) {
                         update();
                     }
                 }
@@ -82,11 +82,11 @@ public class RandomLoadBalancer implements HttpLoadBalancer {
         if (_serviceUrls.size() <= 1)
             return;
 
-        if (System.currentTimeMillis() - _lastForceUpdateTime <= _updateInterval)
+        if (System.currentTimeMillis() - _lastForceUpdateTime < _updateInterval)
             return;
 
         synchronized (this) {
-            if (System.currentTimeMillis() - _lastForceUpdateTime <= _updateInterval)
+            if (System.currentTimeMillis() - _lastForceUpdateTime < _updateInterval)
                 return;
 
             update();

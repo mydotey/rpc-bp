@@ -29,14 +29,15 @@ public class RandomLoadBalancerTest {
         parameterValues.add(new Object[] { new ArrayList<>(), 0, 0, IllegalArgumentException.class });
 
         List<String> serviceUrls = Arrays.asList("url1", "url2");
-        parameterValues.add(new Object[] { serviceUrls, 0, 0, null });
+        parameterValues.add(new Object[] { serviceUrls, 0, 0, IllegalArgumentException.class });
         parameterValues.add(new Object[] { serviceUrls, -1, 0, IllegalArgumentException.class });
         parameterValues.add(new Object[] { serviceUrls, 0, -1, IllegalArgumentException.class });
         parameterValues.add(new Object[] { serviceUrls, -1, -1, IllegalArgumentException.class });
+        parameterValues.add(new Object[] { serviceUrls, 1, 0, null });
         parameterValues.add(new Object[] { serviceUrls, 1, 1, null });
 
         serviceUrls = Arrays.asList("url1");
-        parameterValues.add(new Object[] { serviceUrls, 0, 0, null });
+        parameterValues.add(new Object[] { serviceUrls, 1, 0, null });
 
         return parameterValues;
     }

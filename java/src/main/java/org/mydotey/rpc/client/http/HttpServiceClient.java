@@ -2,6 +2,7 @@ package org.mydotey.rpc.client.http;
 
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -70,10 +71,12 @@ public class HttpServiceClient implements RpcClient {
             return response;
         } catch (Throwable ex) {
             executionContext.setExecutionError(ex);
-            logError(procedure, request, response, executionContext);
             throw ex;
         } finally {
             executionContext.complete();
+
+            if (executionContext.getExecutionError() != null)
+                logError(procedure, request, response, executionContext);
         }
     }
 
@@ -94,12 +97,14 @@ public class HttpServiceClient implements RpcClient {
                             if (e == null)
                                 return;
 
-                            if (e instanceof ExecutionException)
+                            if (e instanceof ExecutionException || e instanceof CompletionException)
                                 e = e.getCause();
                             executionContext.setExecutionError(e);
-                            logError(procedure, request, responseRef.get(), executionContext);
                         } finally {
                             executionContext.complete();
+
+                            if (executionContext.getExecutionError() != null)
+                                logError(procedure, request, responseRef.get(), executionContext);
                         }
                     });
         } catch (Throwable e) {

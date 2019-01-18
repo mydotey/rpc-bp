@@ -42,7 +42,7 @@ public class RandomLoadBalancerTest4 {
 
     @Before
     public void setUp() {
-        _loadBalancer = new RandomLoadBalancer(Arrays.asList("url1", "url2"), 0, 0);
+        _loadBalancer = new RandomLoadBalancer(Arrays.asList("url1", "url2"), 1, 0);
     }
 
     @Test

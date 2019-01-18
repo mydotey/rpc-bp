@@ -27,10 +27,10 @@ public class RandomLoadBalancerTest2 {
         List<Object[]> parameterValues = new ArrayList<>();
 
         List<String> serviceUrls = Arrays.asList("url1", "url2");
-        parameterValues.add(new Object[] { serviceUrls, 0, 0, false, 1 });
+        parameterValues.add(new Object[] { serviceUrls, 1, 0, false, 2 });
 
         serviceUrls = Arrays.asList("url1");
-        parameterValues.add(new Object[] { serviceUrls, 0, 0, true, 1 });
+        parameterValues.add(new Object[] { serviceUrls, 1, 0, true, 2 });
 
         serviceUrls = Arrays.asList("url1", "url2");
         parameterValues.add(new Object[] { serviceUrls, 100, 0, true, 1 });

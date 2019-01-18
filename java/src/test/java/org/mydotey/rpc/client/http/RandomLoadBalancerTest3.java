@@ -24,24 +24,24 @@ import org.mydotey.rpc.error.ServiceUnavailableException;
 @RunWith(Parameterized.class)
 public class RandomLoadBalancerTest3 {
 
-    @Parameters(name = "{index}: serviceUrls={0}, ttl={1}, updateInterval={2}, duplicate={3}, sleepMs={4}")
+    @Parameters(name = "{index}: serviceUrls={0}, ttl={1}, updateInterval={2}, duplicate={3}, sleepMs={4}, errorClass={5}")
     public static Collection<Object[]> data() throws NoSuchMethodException, SecurityException {
         List<Object[]> parameterValues = new ArrayList<>();
 
         List<String> serviceUrls = Arrays.asList("url1", "url2");
-        parameterValues.add(new Object[] { serviceUrls, 0, 0, false, 0, HttpRuntimeException.class });
-        parameterValues.add(new Object[] { serviceUrls, 0, 0, false, 0, ServiceUnavailableException.class });
-        parameterValues.add(new Object[] { serviceUrls, 0, 0, true, 0, BadRequestException.class });
+        parameterValues.add(new Object[] { serviceUrls, 1, 0, false, 0, HttpRuntimeException.class });
+        parameterValues.add(new Object[] { serviceUrls, 1, 0, false, 0, ServiceUnavailableException.class });
+        parameterValues.add(new Object[] { serviceUrls, 1, 0, true, 0, BadRequestException.class });
         parameterValues.add(new Object[] { serviceUrls, 100, 0, false, 0, HttpRuntimeException.class });
         parameterValues.add(new Object[] { serviceUrls, 100, 0, false, 0, ServiceUnavailableException.class });
         parameterValues.add(new Object[] { serviceUrls, 100, 0, true, 0, BadRequestException.class });
 
         serviceUrls = Arrays.asList("url1");
-        parameterValues.add(new Object[] { serviceUrls, 0, 0, true, 0, HttpRuntimeException.class });
+        parameterValues.add(new Object[] { serviceUrls, 1, 0, true, 0, HttpRuntimeException.class });
         parameterValues.add(new Object[] { serviceUrls, 100, 0, true, 0, HttpRuntimeException.class });
-        parameterValues.add(new Object[] { serviceUrls, 0, 100, true, 0, HttpRuntimeException.class });
-        parameterValues.add(new Object[] { serviceUrls, 0, 100, true, 50, HttpRuntimeException.class });
-        parameterValues.add(new Object[] { serviceUrls, 0, 100, true, 150, HttpRuntimeException.class });
+        parameterValues.add(new Object[] { serviceUrls, 1, 100, true, 0, HttpRuntimeException.class });
+        parameterValues.add(new Object[] { serviceUrls, 1, 100, true, 50, HttpRuntimeException.class });
+        parameterValues.add(new Object[] { serviceUrls, 1, 100, true, 150, HttpRuntimeException.class });
 
         serviceUrls = Arrays.asList("url1", "url2");
         parameterValues.add(new Object[] { serviceUrls, 100, 50, true, 0, HttpRuntimeException.class });
