@@ -32,7 +32,7 @@ import org.mydotey.rpc.error.ServiceException;
 import org.mydotey.scf.ConfigurationManager;
 import org.mydotey.scf.ConfigurationManagerConfig;
 import org.mydotey.scf.facade.ConfigurationManagers;
-import org.mydotey.scf.facade.StringPropertySources;
+import org.mydotey.scf.facade.SimpleConfigurationSources;
 import org.mydotey.scf.source.stringproperty.memorymap.MemoryMapConfigurationSource;
 
 /**
@@ -117,7 +117,7 @@ public class HttpServiceClientTest {
             serviceUrls.add("http://localhost:" + port);
         }
 
-        MemoryMapConfigurationSource memoryMapConfigurationSource = StringPropertySources.newMemoryMapSource("memory");
+        MemoryMapConfigurationSource memoryMapConfigurationSource = SimpleConfigurationSources.newMemoryMapSource("memory");
         ConfigurationManagerConfig configurationManagerConfig = ConfigurationManagers.newConfigBuilder()
                 .setName("http-service-client-config").addSource(1, memoryMapConfigurationSource).build();
         ConfigurationManager configurationManager = ConfigurationManagers.newManager(configurationManagerConfig);

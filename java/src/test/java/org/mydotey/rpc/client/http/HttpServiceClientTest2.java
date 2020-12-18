@@ -26,7 +26,7 @@ import org.mydotey.rpc.client.http.helloservice.HelloServiceClient;
 import org.mydotey.scf.ConfigurationManager;
 import org.mydotey.scf.ConfigurationManagerConfig;
 import org.mydotey.scf.facade.ConfigurationManagers;
-import org.mydotey.scf.facade.StringPropertySources;
+import org.mydotey.scf.facade.SimpleConfigurationSources;
 import org.mydotey.scf.source.stringproperty.memorymap.MemoryMapConfigurationSource;
 
 /**
@@ -90,7 +90,7 @@ public class HttpServiceClientTest2 {
         serverPorts.forEach(p -> serviceUrls.add("http://localhost:" + p));
         badServerPorts.forEach(p -> serviceUrls.add("http://localhost:" + p));
 
-        MemoryMapConfigurationSource memoryMapConfigurationSource = StringPropertySources.newMemoryMapSource("memory");
+        MemoryMapConfigurationSource memoryMapConfigurationSource = SimpleConfigurationSources.newMemoryMapSource("memory");
         ConfigurationManagerConfig configurationManagerConfig = ConfigurationManagers.newConfigBuilder()
                 .setName("http-service-client-config").addSource(1, memoryMapConfigurationSource).build();
         ConfigurationManager configurationManager = ConfigurationManagers.newManager(configurationManagerConfig);
