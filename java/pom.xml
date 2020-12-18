@@ -47,7 +47,7 @@
         <slf4j.version>1.7.25</slf4j.version>
         <scf-bom.version>1.6.3</scf-bom.version>
         <codec-util-bom.version>1.1.0</codec-util-bom.version>
-        <junit.version>4.12</junit.version>
+        <junit.version>4.13.1</junit.version>
         <spring-boot.version>2.1.0.RELEASE</spring-boot.version>
         <maven-compiler-plugin.version>3.8.0</maven-compiler-plugin.version>
         <maven-source-plugin.version>3.0.1</maven-source-plugin.version>
